@@ -3,53 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Çok Gizli Proje</title>
+    <title>Davinci Terminal | Gömülü Sistemler</title>
     <style>
         body {
+            background-color: #121212;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
             margin: 0;
-            height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        #terminal {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .output-line {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        .user-input {
+            color: #fff;
+        }
+        .system-msg {
+            color: #00ff00;
+        }
+        .error-msg {
+            color: #ff3333;
+        }
+        #input-container {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            font-family: 'Comic Sans MS', sans-serif;
-            animation: rainbow 3s infinite linear; /* Arka plan pavyon gibi dönecek */
+            margin-top: 10px;
         }
-        
-        h1 {
-            color: black;
-            text-shadow: 2px 2px white;
-            z-index: 10;
+        #prompt {
+            color: #00bfff;
+            margin-right: 10px;
+            white-space: nowrap;
         }
-
-        .cat {
-            font-size: 150px;
-            animation: spinAndBounce 2s infinite ease-in-out;
-        }
-
-        /* Göz yoran renk cümbüşü animasyonu */
-        @keyframes rainbow {
-            0% { background-color: #ff9999; }
-            20% { background-color: #ffcc99; }
-            40% { background-color: #ffff99; }
-            60% { background-color: #99ff99; }
-            80% { background-color: #9999ff; }
-            100% { background-color: #ff9999; }
-        }
-
-        /* Kedinin zıplama ve dönme animasyonu */
-        @keyframes spinAndBounce {
-            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-            50% { transform: translateY(-250px) rotate(180deg) scale(1.5); }
+        #cmd {
+            background-color: transparent;
+            color: #fff;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            flex-grow: 1;
+            width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <h1>Şu an burada görülecek bir şey yok...</h1>
-    <h2>Ama bu kediyi izleyebilirsin!</h2>
-    <div class="cat">🐱</div>
+    <div id="terminal">
+        <div class="system-msg output-line">
+            Sisteme hoş geldiniz... <br>
+            Bağlantı kuruldu: davinci-server <br>
+            Tarih: 21 Ağustos 2026 <br>
+            İpucu: Kullanabileceğin komutları görmek için 'help' yazıp Enter'a bas.
+        </div>
+        <br>
+        <div id="output"></div>
+        <div id="input-container">
+            <span id="prompt">guest@davinci:~$</span>
+            <input type="text" id="cmd" autocomplete="off" autofocus>
+        </div>
+    </div>
 
+    <script>
+        const cmdInput = document.getElementById('cmd');
+        const outputDiv = document.getElementById('output');
+
+        // Kullanıcının yazabileceği komutlar ve cevapları
+        const commands = {
+            'help': 'Kullanılabilir komutlar: <br> - <b>whoami</b>: Benim hakkımda bilgi verir.<br> - <b>skills</b>: Yeteneklerimi ve uğraştığım alanları listeler.<br> - <b>projects</b>: Üzerinde çalıştığım projeler.<br> - <b>clear</b>: Ekranı temizler.',
+            'whoami': 'Ben bir donanım ve gömülü sistemler meraklısıyım. Web tasarımı bana göre değil, ben işin çekirdeğine inmeyi severim. Lehim dumanı ve Linux logları arasında yaşıyorum.',
+            'skills': '>[YÜKLENİYOR]... <br> 1. Gömülü Sistemler (Embedded Systems)<br> 2. Linux & Sunucu Yönetimi (Docker, Alpine)<br> 3. IoT & Akıllı Ev (Home Assistant)<br> 4. Sorun Çözme & Log Okuma (Bkz: systemd çökmeleri)',
+            'projects': 'Şu anki ana görev: Eski bir telefonu sunucuya çevirmek ve PostmarketOS üzerinde Home Assistant koşturmak (Başarıyla tamamlandı).',
+        };
+
+        // Enter tuşuna basıldığında çalışacak kod
+        cmdInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const inputText = cmdInput.value.trim().toLowerCase();
+                
+                // Kullanıcının yazdığını ekrana ekle
+                const newLog = document.createElement('div');
+                newLog.innerHTML = `<span style="color:#00bfff;">guest@davinci:~$</span> <span class="user-input">${inputText}</span>`;
+                outputDiv.appendChild(newLog);
+
+                // Komutun cevabını ekle
+                const responseLog = document.createElement('div');
+                responseLog.classList.add('output-line');
+
+                if (inputText === 'clear') {
+                    outputDiv.innerHTML = ''; // Ekranı temizle
+                } else if (inputText === '') {
+                    // Boş enter basılırsa hiçbir şey yapma
+                } else if (commands[inputText]) {
+                    responseLog.innerHTML = `<span class="system-msg">${commands[inputText]}</span>`;
+                    outputDiv.appendChild(responseLog);
+                } else {
+                    responseLog.innerHTML = `<span class="error-msg">Hata: '${inputText}' komutu bulunamadı. Lütfen 'help' yazın.</span>`;
+                    outputDiv.appendChild(responseLog);
+                }
+
+                // Input'u temizle ve en alta kaydır
+                cmdInput.value = '';
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        });
+
+        // Ekrana tıklandığında imleci tekrar yazı yazma yerine odakla
+        document.addEventListener('click', function() {
+            cmdInput.focus();
+        });
+    </script>
 </body>
 </html>
