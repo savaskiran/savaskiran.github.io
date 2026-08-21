@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çok Gizli Proje</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Comic Sans MS', sans-serif;
+            animation: rainbow 3s infinite linear; /* Arka plan pavyon gibi dönecek */
+        }
+        
+        h1 {
+            color: black;
+            text-shadow: 2px 2px white;
+            z-index: 10;
+        }
+
+        .cat {
+            font-size: 150px;
+            animation: spinAndBounce 2s infinite ease-in-out;
+        }
+
+        /* Göz yoran renk cümbüşü animasyonu */
+        @keyframes rainbow {
+            0% { background-color: #ff9999; }
+            20% { background-color: #ffcc99; }
+            40% { background-color: #ffff99; }
+            60% { background-color: #99ff99; }
+            80% { background-color: #9999ff; }
+            100% { background-color: #ff9999; }
+        }
+
+        /* Kedinin zıplama ve dönme animasyonu */
+        @keyframes spinAndBounce {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-250px) rotate(180deg) scale(1.5); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Şu an burada görülecek bir şey yok...</h1>
+    <h2>Ama bu kediyi izleyebilirsin!</h2>
+    <div class="cat">🐱</div>
+
+</body>
+</html>
