@@ -1,151 +1,234 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ADIN}}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>savas@cachyos ~ </title>
+<meta name="description" content="savaskiran — bir terminal, bir site.">
 <style>
-  :root { --bg:#0a0a0f; --fg:#e8e8f0; --muted:#8b8ba7; --accent:#7c5cff; --accent2:#00d4ff; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background:var(--bg); color:var(--fg); min-height:100vh;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
-    display:flex; align-items:center; justify-content:center;
-    overflow-x:hidden; transition:background .4s;
+  :root{
+    --bg:#0a0d0e;
+    --fg:#b9c6c4;
+    --accent:#5cf08a;
+    --dim:#4a5a58;
+    --warn:#f0c05c;
   }
-  canvas#net { position:fixed; inset:0; z-index:0; }
-  .wrap { position:relative; z-index:1; text-align:center; padding:2rem; max-width:640px; }
-  .logo {
-    width:64px; height:64px; margin:0 auto 1.5rem; border-radius:18px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    display:flex; align-items:center; justify-content:center;
-    font-size:28px; font-weight:700; color:#fff; cursor:pointer;
-    box-shadow:0 8px 40px rgba(124,92,255,.4); user-select:none;
-    transition:transform .2s;
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font:400 clamp(12px,1.6vw,15px)/1.6 "JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace;
+    overflow:hidden;
   }
-  .logo:active { transform:scale(.92); }
-  h1 { font-size:clamp(2rem,7vw,3.5rem); font-weight:800; letter-spacing:-.03em; margin-bottom:.75rem; }
-  h1 .grad {
-    background:linear-gradient(90deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
+  #crt{position:fixed;inset:0;padding:clamp(12px,3vw,32px);overflow-y:auto;cursor:text}
+  #crt::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);
+    mix-blend-mode:multiply;
   }
-  .cursor { display:inline-block; width:3px; background:var(--accent2); animation:blink 1s steps(2) infinite; }
-  @keyframes blink { 50% { opacity:0; } }
-  p.bio { color:var(--muted); font-size:1.05rem; line-height:1.7; margin-bottom:2rem; }
-  .links { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }
-  .links a {
-    color:var(--fg); text-decoration:none; padding:.7rem 1.4rem; border-radius:999px;
-    border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03);
-    font-size:.92rem; transition:.25s;
+  #glow{position:fixed;inset:0;pointer-events:none;z-index:4;
+    background:radial-gradient(ellipse at 50% 40%,transparent 55%,rgba(0,0,0,.55) 100%);}
+  #out{white-space:pre-wrap;word-break:break-word}
+  .a{color:var(--accent);text-shadow:0 0 8px color-mix(in srgb,var(--accent) 45%,transparent)}
+  .d{color:var(--dim)}
+  .w{color:var(--warn)}
+  .b{font-weight:700}
+  #line{display:flex;align-items:baseline;gap:.5ch;margin-top:.2em}
+  #cmd{
+    flex:1;background:none;border:0;outline:0;color:var(--fg);
+    font:inherit;caret-color:var(--accent);min-width:2ch;
   }
-  .links a:hover { border-color:var(--accent); background:rgba(124,92,255,.12); transform:translateY(-2px); }
-  .hint { margin-top:3rem; font-size:.75rem; color:#3a3a52; letter-spacing:.1em; }
-
-  /* ---------- 1999 MODU ---------- */
-  body.retro { background:#008080 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ctext y='28' font-size='26'%3E%E2%AD%90%3C/text%3E%3C/svg%3E"); font-family:"Comic Sans MS","Chalkboard SE",cursive; }
-  body.retro canvas { display:none; }
-  body.retro .wrap { background:#c0c0c0; color:#000; border:4px ridge #fff; padding:1.5rem; }
-  body.retro h1, body.retro h1 .grad { color:#ff0000; -webkit-text-fill-color:#ff0000; font-family:inherit; text-shadow:2px 2px 0 #ff0; }
-  body.retro p.bio { color:#000080; font-weight:bold; }
-  body.retro .links a { color:#0000ee; text-decoration:underline; border:none; background:none; padding:.2rem; }
-  body.retro .logo { border-radius:0; background:#ff00ff; }
-  .marquee { display:none; }
-  body.retro .marquee {
-    display:block; position:fixed; top:0; left:0; right:0; z-index:5;
-    background:#000; color:#0f0; padding:.4rem; white-space:nowrap; font-size:.9rem;
-  }
-  body.retro .marquee span { display:inline-block; padding-left:100%; animation:slide 12s linear infinite; }
-  @keyframes slide { to { transform:translateX(-200%); } }
-  body.retro .hint { color:#000; animation:blink .7s steps(2) infinite; font-weight:bold; }
+  #cur{width:.6ch;height:1.05em;background:var(--accent);display:inline-block;
+       animation:bl 1.05s step-end infinite;translate:0 .15em}
+  @keyframes bl{50%{opacity:0}}
+  #mx{position:fixed;inset:0;z-index:9;display:none;background:#000}
+  a{color:var(--accent)}
+  ::selection{background:var(--accent);color:#000}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--dim)}
 </style>
 </head>
 <body>
-<canvas id="net"></canvas>
-<div class="marquee"><span>*** BU SİTE EN İYİ NETSCAPE NAVIGATOR 4.0 İLE 800x600 ÇÖZÜNÜRLÜKTE GÖRÜNTÜLENİR *** ZİYARETÇİ SAYISI: 000042 *** DEFTERİMİ İMZALAMAYI UNUTMA ***</span></div>
-
-<main class="wrap">
-  <div class="logo" id="logo">{{HARF}}</div>
-  <h1><span class="grad" id="type"></span><span class="cursor">&nbsp;</span></h1>
-  <p class="bio">{{KISA_BIR_CUMLE_KENDINDEN_BAHSET}}</p>
-  <div class="links">
-    <a href="https://github.com/KULLANICI_ADIN">GitHub</a>
-    <a href="mailto:mail@ornek.com">E-posta</a>
-    <a href="#">Projeler</a>
+<div id="crt">
+  <div id="out"></div>
+  <div id="line" hidden>
+    <span><span class="a b">savas@cachyos</span><span class="d">:</span><span class="w">~</span><span class="d">$</span></span>
+    <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="komut">
   </div>
-  <p class="hint">↑ ↑ ↓ ↓ ← → ← → B A</p>
-</main>
+</div>
+<div id="glow"></div>
+<canvas id="mx"></canvas>
 
 <script>
-/* daktilo */
-const words = ["{{ADIN}}", "geliştirici", "merhaba dünya"];
-let w = 0, c = 0, del = false;
-const el = document.getElementById('type');
-(function type() {
-  const word = words[w];
-  el.textContent = del ? word.slice(0, --c) : word.slice(0, ++c);
-  if (!del && c === word.length) { del = true; setTimeout(type, 1600); return; }
-  if (del && c === 0) { del = false; w = (w + 1) % words.length; }
-  setTimeout(type, del ? 45 : 110);
-})();
+const out=document.getElementById('out'),line=document.getElementById('line'),
+      cmd=document.getElementById('cmd'),crt=document.getElementById('crt');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const scroll=()=>crt.scrollTop=crt.scrollHeight;
 
-/* imleci takip eden ag */
-const cv = document.getElementById('net'), ctx = cv.getContext('2d');
-let pts = [], mouse = { x: -999, y: -999 };
-function size() {
-  cv.width = innerWidth; cv.height = innerHeight;
-  pts = Array.from({ length: Math.min(90, Math.floor(innerWidth / 14)) }, () => ({
-    x: Math.random() * cv.width, y: Math.random() * cv.height,
-    vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4
-  }));
+function print(text="",cls=""){
+  const el=document.createElement('div');
+  if(cls)el.className=cls;
+  el.textContent=text;
+  out.appendChild(el);scroll();return el;
 }
-addEventListener('resize', size); size();
-addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-addEventListener('mouseout', () => { mouse.x = mouse.y = -999; });
-(function draw() {
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  for (const p of pts) {
-    p.x += p.vx; p.y += p.vy;
-    if (p.x < 0 || p.x > cv.width) p.vx *= -1;
-    if (p.y < 0 || p.y > cv.height) p.vy *= -1;
-    const d = Math.hypot(p.x - mouse.x, p.y - mouse.y);
-    ctx.fillStyle = d < 140 ? 'rgba(0,212,255,.9)' : 'rgba(124,92,255,.45)';
-    ctx.beginPath(); ctx.arc(p.x, p.y, d < 140 ? 2.4 : 1.4, 0, 7); ctx.fill();
-    if (d < 160) {
-      ctx.strokeStyle = `rgba(0,212,255,${(1 - d / 160) * .5})`;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke();
-    }
-  }
-  for (let i = 0; i < pts.length; i++)
-    for (let j = i + 1; j < pts.length; j++) {
-      const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
-      if (d < 110) {
-        ctx.strokeStyle = `rgba(124,92,255,${(1 - d / 110) * .22})`;
-        ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
-      }
-    }
-  requestAnimationFrame(draw);
-})();
+async function type(text,cls="",speed=14){
+  const el=print("",cls);
+  for(const ch of text){el.textContent+=ch;await sleep(speed);}
+  return el;
+}
 
-/* gizli: konami kodu + logoya 5 dokunus */
-const code = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-let idx = 0;
-addEventListener('keydown', e => {
-  idx = (e.key.toLowerCase() === code[idx].toLowerCase()) ? idx + 1 : 0;
-  if (idx === code.length) { idx = 0; timeTravel(); }
-});
-let taps = 0, tapTimer;
-document.getElementById('logo').addEventListener('click', () => {
-  clearTimeout(tapTimer); tapTimer = setTimeout(() => taps = 0, 900);
-  if (++taps === 5) { taps = 0; timeTravel(); }
-});
-function timeTravel() {
-  document.body.classList.toggle('retro');
-  if (document.body.classList.contains('retro')) {
-    document.querySelector('.hint').textContent = '🚧 UNDER CONSTRUCTION 🚧';
-  } else {
-    document.querySelector('.hint').textContent = '↑ ↑ ↓ ↓ ← → ← → B A';
+/* ---------- içerik ---------- */
+const LOGO=[
+"      /\\        ",
+"     /  \\       ",
+"    /\\   \\      ",
+"   /      \\     ",
+"  /   ,,   \\    ",
+" /   |  |  -\\   ",
+"/_-''    ''-_\\  "];
+const INFO=[
+"savas@cachyos",
+"-------------",
+"OS      CachyOS x86_64",
+"Shell   fish",
+"Host    github.io",
+"Uptime  "+(new Date().getFullYear()-2024)+" yıl civarı",
+"Motto   'çalışıyorsa dokunma' — dokunur"];
+
+const FILES={
+"about.txt":"Merhaba. Ben Savaş.\nKod yazarım, bozarım, sonra tekrar yazarım.\nBu sayfa bir yapay zekanın bir cuma akşamı bıraktığı hediyedir.",
+"contact.md":"github  : github.com/savaskiran\nmail    : bulursun\nkonum   : /home/savas",
+".secret":"Tebrikler, gizli dosyayı buldun. Ödülün: bir tavsiye.\nHer şeyi otomatize etmeye çalışma, bazı şeyler elle daha hızlı."
+};
+
+const CMDS={
+  help(){print(`kullanılabilir komutlar:
+
+  about      ben kimim
+  projects   ne yaptım
+  skills     ne biliyorum
+  contact    nasıl ulaşırsın
+  neofetch   zorunlu ritüel
+  ls         dosyaları listele
+  cat <dosya>  dosya oku
+  theme      renk değiştir
+  date       tarih
+  clear      temizle
+
+  ...ve keşfetmen için birkaç tane daha.`);},
+
+  about(){print(FILES["about.txt"]);},
+
+  projects(){print(`  [01] bu site            — kendi kendini açıklıyor
+  [02] dotfiles          — 3 yıllık birikim, 2 dakikada kurulum
+  [03] gizli proje       — daha README'si bile yok
+  [04] terk edilmiş 12 repo — hepsi anıdır`);},
+
+  skills(){
+    const s=[["javascript",92],["linux",88],["git",85],["css",74],["sabır",41]];
+    s.forEach(([n,v])=>{
+      const f=Math.round(v/5), bar="█".repeat(f)+"░".repeat(20-f);
+      print(n.padEnd(12)+bar+" "+v+"%","a");
+    });
+  },
+
+  contact(){print(FILES["contact.md"]);},
+
+  neofetch(){
+    LOGO.forEach((l,i)=>{
+      const el=print();
+      const a=document.createElement('span');a.className="a b";a.textContent=l;
+      const b=document.createElement('span');b.textContent=INFO[i]||"";
+      el.append(a,b);
+    });
+  },
+
+  ls(){print("about.txt   contact.md   projects/   .secret","a");},
+
+  cat(arg){
+    if(!arg)return print("cat: hangi dosya?","w");
+    FILES[arg]?print(FILES[arg]):print("cat: "+arg+": böyle bir dosya yok","w");
+  },
+
+  theme(){
+    const t=["#5cf08a","#f0b45c","#5cd4f0","#f05c9e","#c98cf0"];
+    const cur=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const next=t[(t.indexOf(cur)+1)%t.length];
+    document.documentElement.style.setProperty('--accent',next);
+    print("tema: "+next,"a");
+  },
+
+  date(){print(new Date().toLocaleString('tr-TR'));},
+  echo(a){print(a||"");},
+  clear(){out.innerHTML="";},
+
+  sudo(){print("savas sudoers dosyasında değil. Bu olay rapor edilecektir.","w");},
+  fish(){print("🐟 zaten en iyi shell'desin. Devam et.","a");},
+  vim(){print("vim açıldı. Çıkmak için... iyi şanslar.","w");},
+  exit(){print("terminalden çıkamazsın. terminal sensin.","d");},
+  coffee(){print("☕ demleniyor... hata: kafein rezervi tükendi.","w");},
+  whoami(){print("bir ziyaretçi. ama iyi bir tane.","a");},
+
+  matrix(){
+    const c=document.getElementById('mx'),x=c.getContext('2d');
+    c.style.display="block";c.width=innerWidth;c.height=innerHeight;
+    const cols=Math.floor(c.width/14),y=Array(cols).fill(1);
+    const acc=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const id=setInterval(()=>{
+      x.fillStyle="rgba(0,0,0,.06)";x.fillRect(0,0,c.width,c.height);
+      x.fillStyle=acc;x.font="14px monospace";
+      y.forEach((v,i)=>{
+        x.fillText(String.fromCharCode(0x30A0+Math.random()*96),i*14,v*14);
+        if(v*14>c.height&&Math.random()>.975)y[i]=0;
+        y[i]++;
+      });
+    },45);
+    const stop=()=>{clearInterval(id);c.style.display="none";
+      removeEventListener('keydown',stop);removeEventListener('click',stop);
+      print("bağlantı kesildi. gerçek dünyaya hoş geldin.","d");};
+    addEventListener('keydown',stop);addEventListener('click',stop);
+    setTimeout(stop,9000);
   }
+};
+
+/* ---------- döngü ---------- */
+const hist=[];let hp=0;
+
+function run(raw){
+  const input=raw.trim();
+  const el=print();
+  const p=document.createElement('span');p.className="a b";p.textContent="savas@cachyos";
+  const rest=document.createElement('span');rest.textContent=":~$ "+input;
+  el.append(p,rest);
+  if(!input)return;
+  hist.push(input);hp=hist.length;
+  const [name,...args]=input.split(/\s+/);
+  const fn=CMDS[name.toLowerCase()];
+  fn?fn(args.join(" ")):print(name+": komut bulunamadı. 'help' dene.","w");
 }
+
+cmd.addEventListener('keydown',e=>{
+  if(e.key==="Enter"){run(cmd.value);cmd.value="";scroll();}
+  else if(e.key==="ArrowUp"){if(hp>0)cmd.value=hist[--hp];e.preventDefault();}
+  else if(e.key==="ArrowDown"){hp<hist.length-1?cmd.value=hist[++hp]:(hp=hist.length,cmd.value="");}
+  else if(e.key==="l"&&e.ctrlKey){e.preventDefault();out.innerHTML="";}
+});
+crt.addEventListener('click',()=>{if(!getSelection().toString())cmd.focus();});
+
+(async()=>{
+  await type("[    0.000000] savaskiran.github.io başlatılıyor...","d",8);
+  await sleep(180);
+  await type("[    0.412331] kernel: linux-cachyos yüklendi","d",4);
+  await type("[    0.883210] fish shell hazır","d",4);
+  await type("[    1.204551] ego modülü yüklenemedi (kritik değil)","d",4);
+  await sleep(250);
+  print();
+  CMDS.neofetch();
+  print();
+  await type("bir terminaldesin. 'help' yazıp entere bas.","a",22);
+  print();
+  line.hidden=false;cmd.focus();scroll();
+})();
 </script>
 </body>
 </html>
