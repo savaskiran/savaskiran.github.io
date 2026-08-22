@@ -2,233 +2,1079 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>savas@cachyos ~ </title>
-<meta name="description" content="savaskiran — bir terminal, bir site.">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KATMANLAR — her yüzeyin altında bir yüzey daha var</title>
+<meta name="description" content="Yırtılabilen bir web sitesi. Sayfayı parmağınla sök, altındaki katmanı bul. Beş katman, bir döngü.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e9e6df'/%3E%3Cpath d='M0 17l5 3 5-4 6 4 5-4 6 3 5-2v15H0z' fill='%230b0d10'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#0a0d0e;
-    --fg:#b9c6c4;
-    --accent:#5cf08a;
-    --dim:#4a5a58;
-    --warn:#f0c05c;
-  }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
+  html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
   body{
-    background:var(--bg);
-    color:var(--fg);
-    font:400 clamp(12px,1.6vw,15px)/1.6 "JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace;
-    overflow:hidden;
+    background:#fffdf7;                       /* en alttaki ışık */
+    font-family:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    -webkit-tap-highlight-color:transparent;
   }
-  #crt{position:fixed;inset:0;padding:clamp(12px,3vw,32px);overflow-y:auto;cursor:text}
-  #crt::after{
-    content:"";position:fixed;inset:0;pointer-events:none;z-index:5;
-    background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);
-    mix-blend-mode:multiply;
+
+  /* ---------- sahne ---------- */
+  #stage{position:fixed;inset:0;touch-action:none;user-select:none}
+  #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:none;will-change:transform,opacity,filter}
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:400;display:block!important}
+  #stage{cursor:crosshair}
+  #stage.hidecur{cursor:none}
+
+  /* ---------- HUD (difference ile her zeminde okunur) ---------- */
+  #hud{position:fixed;inset:0;z-index:500;pointer-events:none;
+       mix-blend-mode:difference;color:#fff;
+       font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  #hud .tl{position:absolute;top:16px;left:18px;line-height:1.9}
+  #hud .tl b{font-weight:700}
+  #hud .tl span{opacity:.6;font-weight:400}
+  #hud .tr{position:absolute;top:14px;right:16px;display:flex;align-items:center;gap:10px}
+  #hud button{pointer-events:auto;background:none;border:1px solid rgba(255,255,255,.45);
+    color:inherit;font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    padding:6px 9px;border-radius:2px;cursor:pointer;transition:background .15s,border-color .15s}
+  #hud button:hover{background:rgba(255,255,255,.18);border-color:#fff}
+  #ring{width:34px;height:34px;transform:rotate(-90deg)}
+  #ring circle{fill:none;stroke-width:2.5}
+  #ring .bg{stroke:rgba(255,255,255,.22)}
+  #ring .fg{stroke:#fff;stroke-linecap:round;transition:stroke-dashoffset .12s linear}
+  #depth{position:absolute;left:18px;bottom:18px;display:flex;gap:5px;align-items:flex-end}
+  #depth i{display:block;width:16px;height:3px;background:rgba(255,255,255,.28)}
+  #depth i.on{background:#fff;height:9px}
+
+  /* ---------- ipucu ---------- */
+  #hint{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:450;
+    pointer-events:none;mix-blend-mode:difference;color:#fff;font-size:12px;letter-spacing:.1em;
+    opacity:0;transition:opacity .8s;text-align:center;line-height:1.8}
+  #hint.show{opacity:1}
+  #hint em{display:block;font-style:normal;opacity:.55;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+  #hint .pulse{display:inline-block;animation:pulse 1.9s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:translateX(-9px)}50%{transform:translateX(9px)}}
+
+  /* ---------- son katman: gerçek linkler ---------- */
+  #final{position:fixed;left:0;right:0;bottom:0;z-index:460;display:flex;justify-content:center;
+    gap:22px;padding:0 20px 46px;opacity:0;transition:opacity .9s .3s;pointer-events:none;flex-wrap:wrap}
+  #final.on{opacity:1}
+  #final a{pointer-events:auto;color:#cfe4ff;text-decoration:none;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;border-bottom:1px solid rgba(207,228,255,.3);padding-bottom:4px;
+    transition:color .2s,border-color .2s}
+  #final a:hover{color:#fff;border-color:#fff}
+
+  /* ---------- metin görünümü ---------- */
+  #doc{position:fixed;inset:0;z-index:700;background:rgba(8,9,12,.94);backdrop-filter:blur(6px);
+    color:#dfe6e4;overflow:auto;padding:min(9vh,80px) 24px;display:none}
+  #doc.on{display:block}
+  #doc .wrap{max-width:640px;margin:0 auto;font-size:14px;line-height:1.85}
+  #doc h1{font-size:13px;letter-spacing:.3em;text-transform:uppercase;opacity:.5;font-weight:400;margin:0 0 34px}
+  #doc h2{font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:#8ef0b6;
+    margin:34px 0 10px;font-weight:700}
+  #doc p{margin:0 0 8px;white-space:pre-wrap}
+  #doc a{color:#8ef0b6}
+  #doc .close{position:fixed;top:16px;right:18px}
+  #doc footer{margin:44px 0 0;opacity:.4;font-size:11px;line-height:2}
+  kbd{border:1px solid rgba(255,255,255,.25);border-radius:3px;padding:1px 5px;font-size:11px}
+
+  /* ---------- toast ---------- */
+  #toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);z-index:600;
+    pointer-events:none;mix-blend-mode:difference;color:#fff;font-size:clamp(13px,2.6vw,19px);
+    letter-spacing:.06em;text-align:center;opacity:0;transition:opacity .5s,transform .5s;max-width:80vw}
+  #toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  #flash{position:fixed;inset:0;z-index:650;background:#fffdf7;pointer-events:none;opacity:0;
+    transition:opacity .9s}
+  #flash.on{opacity:1;transition:opacity .06s}
+
+  @media (max-width:620px){
+    #hud .tl{font-size:10px;top:12px;left:12px}
+    #hud .tr{top:10px;right:10px}
+    #depth{left:12px;bottom:12px}
   }
-  #glow{position:fixed;inset:0;pointer-events:none;z-index:4;
-    background:radial-gradient(ellipse at 50% 40%,transparent 55%,rgba(0,0,0,.55) 100%);}
-  #out{white-space:pre-wrap;word-break:break-word}
-  .a{color:var(--accent);text-shadow:0 0 8px color-mix(in srgb,var(--accent) 45%,transparent)}
-  .d{color:var(--dim)}
-  .w{color:var(--warn)}
-  .b{font-weight:700}
-  #line{display:flex;align-items:baseline;gap:.5ch;margin-top:.2em}
-  #cmd{
-    flex:1;background:none;border:0;outline:0;color:var(--fg);
-    font:inherit;caret-color:var(--accent);min-width:2ch;
+  @media (prefers-reduced-motion:reduce){
+    #hint .pulse{animation:none}
   }
-  #cur{width:.6ch;height:1.05em;background:var(--accent);display:inline-block;
-       animation:bl 1.05s step-end infinite;translate:0 .15em}
-  @keyframes bl{50%{opacity:0}}
-  #mx{position:fixed;inset:0;z-index:9;display:none;background:#000}
-  a{color:var(--accent)}
-  ::selection{background:var(--accent);color:#000}
-  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--dim)}
 </style>
 </head>
 <body>
-<div id="crt">
-  <div id="out"></div>
-  <div id="line" hidden>
-    <span><span class="a b">savas@cachyos</span><span class="d">:</span><span class="w">~</span><span class="d">$</span></span>
-    <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="komut">
+
+<div id="stage"></div>
+<canvas id="fx"></canvas>
+
+<div id="hud">
+  <div class="tl"><b id="lname">KATMAN 01</b><br><span id="ltag">yüzey</span></div>
+  <div class="tr">
+    <button id="bDoc" title="metin görünümü (T)">metin</button>
+    <button id="bSnd" title="ses (M)">ses ▮▮</button>
+    <button id="bAuto" title="baştan (R)">baştan</button>
+    <svg id="ring" viewBox="0 0 36 36" aria-hidden="true">
+      <circle class="bg" cx="18" cy="18" r="15"></circle>
+      <circle class="fg" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2"></circle>
+    </svg>
   </div>
+  <div id="depth"></div>
 </div>
-<div id="glow"></div>
-<canvas id="mx"></canvas>
+
+<div id="hint"><span class="pulse">◄ ▬▬▬ ►</span><br>basılı tut ve sürükle<em>sayfayı yırt</em></div>
+
+<div id="final">
+  <a href="https://github.com/savaskiran" target="_blank" rel="noopener">github</a>
+  <a href="#" id="againLink">tekrar yırt</a>
+  <a href="#" id="docLink">metni oku</a>
+</div>
+
+<div id="toast"></div>
+<div id="flash"></div>
+
+<div id="doc" role="dialog" aria-label="Metin görünümü">
+  <button class="close" id="bDocX" style="pointer-events:auto;background:none;border:1px solid rgba(255,255,255,.3);color:#dfe6e4;font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;border-radius:2px;cursor:pointer">kapat ✕</button>
+  <div class="wrap" id="docBody"></div>
+</div>
+
+<noscript>
+  <div style="position:fixed;inset:0;background:#0b0d10;color:#dfe6e4;padding:12vh 8vw;z-index:9999;font-size:15px;line-height:1.9">
+    <h1 style="font-size:14px;letter-spacing:.3em;opacity:.5;font-weight:400">KATMANLAR</h1>
+    <p>Bu site beş katmandan oluşur ve yırtılarak okunur; bunun için JavaScript gerekir.</p>
+    <p>Kısa versiyonu: her yüzeyin altında bir yüzey daha var. Bu sitenin de.</p>
+    <p><a style="color:#8ef0b6" href="https://github.com/savaskiran">github.com/savaskiran</a></p>
+  </div>
+</noscript>
 
 <script>
-const out=document.getElementById('out'),line=document.getElementById('line'),
-      cmd=document.getElementById('cmd'),crt=document.getElementById('crt');
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const scroll=()=>crt.scrollTop=crt.scrollHeight;
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   KATMANLAR
+   Yırtılabilir bir web sitesi. Üst katman kağıttır; sürükleyince
+   piksellerini siler (destination-out), altındaki katman görünür.
+   Yeterince yırtıldığında katman çöker ve bir sonrakine geçilir.
+   ═══════════════════════════════════════════════════════════════ */
 
-function print(text="",cls=""){
-  const el=document.createElement('div');
-  if(cls)el.className=cls;
-  el.textContent=text;
-  out.appendChild(el);scroll();return el;
-}
-async function type(text,cls="",speed=14){
-  const el=print("",cls);
-  for(const ch of text){el.textContent+=ch;await sleep(speed);}
-  return el;
-}
+const stage = document.getElementById('stage');
+const fx    = document.getElementById('fx');
+const fxg   = fx.getContext('2d');
+const RM    = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------- içerik ---------- */
-const LOGO=[
-"      /\\        ",
-"     /  \\       ",
-"    /\\   \\      ",
-"   /      \\     ",
-"  /   ,,   \\    ",
-" /   |  |  -\\   ",
-"/_-''    ''-_\\  "];
-const INFO=[
-"savas@cachyos",
-"-------------",
-"OS      CachyOS x86_64",
-"Shell   fish",
-"Host    github.io",
-"Uptime  "+(new Date().getFullYear()-2024)+" yıl civarı",
-"Motto   'çalışıyorsa dokunma' — dokunur"];
+let W = 0, H = 0, DPR = 1, S = 1;
+const clamp = (v,a,b)=>v<a?a:v>b?b:v;
+const rnd   = (a=1,b=0)=>b+Math.random()*(a-b);
 
-const FILES={
-"about.txt":"Merhaba. Ben Savaş.\nKod yazarım, bozarım, sonra tekrar yazarım.\nBu sayfa bir yapay zekanın bir cuma akşamı bıraktığı hediyedir.",
-"contact.md":"github  : github.com/savaskiran\nmail    : bulursun\nkonum   : /home/savas",
-".secret":"Tebrikler, gizli dosyayı buldun. Ödülün: bir tavsiye.\nHer şeyi otomatize etmeye çalışma, bazı şeyler elle daha hızlı."
-};
+/* ---------------------------------------------------------------
+   içerik — düzenlemek istersen burası
+   --------------------------------------------------------------- */
+const DOC = [
+  ['katman 01 · yüzey', [
+    'SİTE YAPIM AŞAMASINDA',
+    'Lütfen daha sonra tekrar deneyin.',
+    '© 2004 · tüm hakları saklıdır · ziyaretçi: 000041',
+    '( bu sayfa kağıttan yapılmıştır )'
+  ]],
+  ['katman 02 · taslak', [
+    'Her bitmiş şeyin altında, onu düşünen çizim durur.',
+    'ölçüler yaklaşıktır · onay: yok · rev.03',
+    'burada bir fikir olacaktı'
+  ]],
+  ['katman 03 · kağıt', [
+    'gece 03:14',
+    'bir şey yapmak,\nbir şeyi bitirmekten\nher zaman daha kolay.',
+    '☑ fikri bul   ☑ ertele   ☐ bitir'
+  ]],
+  ['katman 04 · devre', [
+    '> önyükleme ............ tamam',
+    '> insan tespit edildi',
+    '> niyet: merak',
+    '> öneri: yırtmaya devam et'
+  ]],
+  ['katman 05 · boşluk', [
+    'buraya kadar geldin.',
+    'her yüzeyin altında bir yüzey daha var. bu sitenin de.',
+    'yırtmaya devam edersen başa dönersin — ama artık biliyorsun.'
+  ]]
+];
 
-const CMDS={
-  help(){print(`kullanılabilir komutlar:
-
-  about      ben kimim
-  projects   ne yaptım
-  skills     ne biliyorum
-  contact    nasıl ulaşırsın
-  neofetch   zorunlu ritüel
-  ls         dosyaları listele
-  cat <dosya>  dosya oku
-  theme      renk değiştir
-  date       tarih
-  clear      temizle
-
-  ...ve keşfetmen için birkaç tane daha.`);},
-
-  about(){print(FILES["about.txt"]);},
-
-  projects(){print(`  [01] bu site            — kendi kendini açıklıyor
-  [02] dotfiles          — 3 yıllık birikim, 2 dakikada kurulum
-  [03] gizli proje       — daha README'si bile yok
-  [04] terk edilmiş 12 repo — hepsi anıdır`);},
-
-  skills(){
-    const s=[["javascript",92],["linux",88],["git",85],["css",74],["sabır",41]];
-    s.forEach(([n,v])=>{
-      const f=Math.round(v/5), bar="█".repeat(f)+"░".repeat(20-f);
-      print(n.padEnd(12)+bar+" "+v+"%","a");
-    });
-  },
-
-  contact(){print(FILES["contact.md"]);},
-
-  neofetch(){
-    LOGO.forEach((l,i)=>{
-      const el=print();
-      const a=document.createElement('span');a.className="a b";a.textContent=l;
-      const b=document.createElement('span');b.textContent=INFO[i]||"";
-      el.append(a,b);
-    });
-  },
-
-  ls(){print("about.txt   contact.md   projects/   .secret","a");},
-
-  cat(arg){
-    if(!arg)return print("cat: hangi dosya?","w");
-    FILES[arg]?print(FILES[arg]):print("cat: "+arg+": böyle bir dosya yok","w");
-  },
-
-  theme(){
-    const t=["#5cf08a","#f0b45c","#5cd4f0","#f05c9e","#c98cf0"];
-    const cur=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    const next=t[(t.indexOf(cur)+1)%t.length];
-    document.documentElement.style.setProperty('--accent',next);
-    print("tema: "+next,"a");
-  },
-
-  date(){print(new Date().toLocaleString('tr-TR'));},
-  echo(a){print(a||"");},
-  clear(){out.innerHTML="";},
-
-  sudo(){print("savas sudoers dosyasında değil. Bu olay rapor edilecektir.","w");},
-  fish(){print("🐟 zaten en iyi shell'desin. Devam et.","a");},
-  vim(){print("vim açıldı. Çıkmak için... iyi şanslar.","w");},
-  exit(){print("terminalden çıkamazsın. terminal sensin.","d");},
-  coffee(){print("☕ demleniyor... hata: kafein rezervi tükendi.","w");},
-  whoami(){print("bir ziyaretçi. ama iyi bir tane.","a");},
-
-  matrix(){
-    const c=document.getElementById('mx'),x=c.getContext('2d');
-    c.style.display="block";c.width=innerWidth;c.height=innerHeight;
-    const cols=Math.floor(c.width/14),y=Array(cols).fill(1);
-    const acc=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    const id=setInterval(()=>{
-      x.fillStyle="rgba(0,0,0,.06)";x.fillRect(0,0,c.width,c.height);
-      x.fillStyle=acc;x.font="14px monospace";
-      y.forEach((v,i)=>{
-        x.fillText(String.fromCharCode(0x30A0+Math.random()*96),i*14,v*14);
-        if(v*14>c.height&&Math.random()>.975)y[i]=0;
-        y[i]++;
-      });
-    },45);
-    const stop=()=>{clearInterval(id);c.style.display="none";
-      removeEventListener('keydown',stop);removeEventListener('click',stop);
-      print("bağlantı kesildi. gerçek dünyaya hoş geldin.","d");};
-    addEventListener('keydown',stop);addEventListener('click',stop);
-    setTimeout(stop,9000);
+/* ---------------------------------------------------------------
+   çizim yardımcıları
+   --------------------------------------------------------------- */
+let GRAIN;
+(function makeGrain(){
+  const c = document.createElement('canvas'); c.width = c.height = 150;
+  const x = c.getContext('2d'), d = x.createImageData(150,150);
+  for (let i=0;i<d.data.length;i+=4){
+    const v = Math.random()*255|0;
+    d.data[i]=d.data[i+1]=d.data[i+2]=v; d.data[i+3]=20;
   }
-};
-
-/* ---------- döngü ---------- */
-const hist=[];let hp=0;
-
-function run(raw){
-  const input=raw.trim();
-  const el=print();
-  const p=document.createElement('span');p.className="a b";p.textContent="savas@cachyos";
-  const rest=document.createElement('span');rest.textContent=":~$ "+input;
-  el.append(p,rest);
-  if(!input)return;
-  hist.push(input);hp=hist.length;
-  const [name,...args]=input.split(/\s+/);
-  const fn=CMDS[name.toLowerCase()];
-  fn?fn(args.join(" ")):print(name+": komut bulunamadı. 'help' dene.","w");
+  x.putImageData(d,0,0); GRAIN = c;
+})();
+const patCache = new Map();
+function grain(g, a=1){
+  let p = patCache.get(g);
+  if (!p){ p = g.createPattern(GRAIN,'repeat'); patCache.set(g,p); }
+  g.save(); g.globalAlpha = a; g.fillStyle = p; g.fillRect(0,0,W,H); g.restore();
+}
+function fit(g, text, maxW, size, mk){
+  let s = size;
+  while (s > 9){ g.font = mk(s); if (g.measureText(text).width <= maxW) break; s -= 1; }
+  g.font = mk(s); return s;
+}
+function tx(g, text, x, y, opt={}){
+  g.save();
+  g.textAlign = opt.align||'left'; g.textBaseline = opt.base||'alphabetic';
+  if (opt.font) g.font = opt.font;
+  if (opt.ls !== undefined) g.letterSpacing = opt.ls+'px';
+  g.fillStyle = opt.color||'#000';
+  if (opt.alpha !== undefined) g.globalAlpha = opt.alpha;
+  g.fillText(text, x, y);
+  g.restore();
+}
+function vignette(g, c='rgba(0,0,0,.35)', inner=.55){
+  const r = Math.hypot(W,H)/2;
+  const gr = g.createRadialGradient(W/2,H*.45,r*inner,W/2,H*.45,r);
+  gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(1,c);
+  g.fillStyle = gr; g.fillRect(0,0,W,H);
 }
 
-cmd.addEventListener('keydown',e=>{
-  if(e.key==="Enter"){run(cmd.value);cmd.value="";scroll();}
-  else if(e.key==="ArrowUp"){if(hp>0)cmd.value=hist[--hp];e.preventDefault();}
-  else if(e.key==="ArrowDown"){hp<hist.length-1?cmd.value=hist[++hp]:(hp=hist.length,cmd.value="");}
-  else if(e.key==="l"&&e.ctrlKey){e.preventDefault();out.innerHTML="";}
-});
-crt.addEventListener('click',()=>{if(!getSelection().toString())cmd.focus();});
+/* ---------------------------------------------------------------
+   KATMANLAR
+   --------------------------------------------------------------- */
+const L = [
 
-(async()=>{
-  await type("[    0.000000] savaskiran.github.io başlatılıyor...","d",8);
-  await sleep(180);
-  await type("[    0.412331] kernel: linux-cachyos yüklendi","d",4);
-  await type("[    0.883210] fish shell hazır","d",4);
-  await type("[    1.204551] ego modülü yüklenemedi (kritik değil)","d",4);
-  await sleep(250);
-  print();
-  CMDS.neofetch();
-  print();
-  await type("bir terminaldesin. 'help' yazıp entere bas.","a",22);
-  print();
-  line.hidden=false;cmd.focus();scroll();
+/* 01 ───────────────── YÜZEY: can sıkıcı bir "yapım aşamasında" */
+{
+  name:'KATMAN 01', tag:'yüzey', bg:'#e9e6df',
+  edge:['rgba(120,112,96,.55)','rgba(255,255,255,.9)'],
+  shard:['#e9e6df','#d6d1c4'],
+  draw(g,t){
+    g.fillStyle = '#e9e6df'; g.fillRect(0,0,W,H);
+    // üst çubuk
+    g.fillStyle = '#dbd6ca'; g.fillRect(0,0,W,46*S);
+    g.fillStyle = '#c7c1b2'; g.fillRect(0,46*S,W,1.5*S);
+    tx(g,'■ savaskiran.github.io',18*S,29*S,
+       {font:`${12*S}px ui-monospace,monospace`,color:'#7d7767',ls:1});
+    if (W > 620) tx(g,'1024×768 İÇİN OPTİMİZE EDİLMİŞTİR',W-18*S,29*S,
+       {font:`${10*S}px ui-monospace,monospace`,color:'#a49d8c',align:'right',ls:1.4});
+
+    const cx = W/2, cy = H*0.44;
+    // başlık
+    const mk = s => `700 ${s}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`;
+    g.save(); g.letterSpacing = (4*S)+'px';
+    const s1 = fit(g,'SİTE YAPIM AŞAMASINDA',W*0.86,40*S,mk);
+    tx(g,'SİTE YAPIM AŞAMASINDA',cx,cy,{font:mk(s1),color:'#6f6a5c',align:'center',ls:4*S});
+    g.restore();
+
+    tx(g,'Lütfen daha sonra tekrar deneyin.',cx,cy+34*S,
+       {font:`${clamp(14*S,11,17)}px system-ui,sans-serif`,color:'#928c7c',align:'center'});
+
+    // asla dolmayan ilerleme çubuğu
+    const bw = Math.min(W*0.62,360*S), bx = cx-bw/2, by = cy+64*S, bh = 13*S;
+    g.fillStyle = '#d5d0c2'; g.fillRect(bx,by,bw,bh);
+    const pct = 87 + Math.sin(t*2.1)*0.49;
+    g.fillStyle = '#9aa38c'; g.fillRect(bx,by,bw*pct/100,bh);
+    g.strokeStyle = '#b3ad9c'; g.lineWidth = 1; g.strokeRect(bx+.5,by+.5,bw-1,bh-1);
+    tx(g,'%'+pct.toFixed(0),cx,by+bh+18*S,
+       {font:`${11*S}px ui-monospace,monospace`,color:'#9a9484',align:'center',ls:1});
+
+    // yanıp sönen rozet
+    if ((t*1.6|0) % 2 === 0){
+      const bxx = cx-24*S, byy = by+34*S;
+      g.fillStyle = '#c8543f'; g.fillRect(bxx,byy,48*S,17*S);
+      tx(g,'YENİ!',bxx+24*S,byy+12.5*S,
+         {font:`700 ${10*S}px system-ui,sans-serif`,color:'#fff',align:'center',ls:1.5});
+    }
+
+    // alt bilgi
+    tx(g,'© 2004 · tüm hakları saklıdır · ziyaretçi sayısı: 000041',cx,H-46*S,
+       {font:`${10.5*S}px ui-monospace,monospace`,color:'#aaa393',align:'center',ls:.6});
+    tx(g,'( bu sayfa kağıttan yapılmıştır )',cx,H-27*S,
+       {font:`italic ${10.5*S}px Georgia,serif`,color:'#c0b9a6',align:'center'});
+
+    grain(g,.55);
+  }
+},
+
+/* 02 ───────────────── TASLAK: mavi kopya */
+{
+  name:'KATMAN 02', tag:'taslak', bg:'#0d2b45',
+  edge:['rgba(0,0,0,.5)','rgba(150,215,255,.85)'],
+  shard:['#0d2b45','#17456c'],
+  draw(g,t){
+    const gr = g.createLinearGradient(0,0,W,H);
+    gr.addColorStop(0,'#0c2440'); gr.addColorStop(1,'#123a52');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+
+    // ızgara
+    const u = 26*S;
+    g.lineWidth = 1;
+    for (let i=0, x=0; x<W; x+=u, i++){
+      g.strokeStyle = i%5 ? 'rgba(140,205,255,.075)' : 'rgba(140,205,255,.19)';
+      g.beginPath(); g.moveTo(x+.5,0); g.lineTo(x+.5,H); g.stroke();
+    }
+    for (let i=0, y=0; y<H; y+=u, i++){
+      g.strokeStyle = i%5 ? 'rgba(140,205,255,.075)' : 'rgba(140,205,255,.19)';
+      g.beginPath(); g.moveTo(0,y+.5); g.lineTo(W,y+.5); g.stroke();
+    }
+
+    const C = 'rgba(178,224,255,.92)', D = 'rgba(178,224,255,.5)';
+    const m = clamp(26*S,14,40);
+    g.strokeStyle = D; g.lineWidth = 1.4;
+    g.strokeRect(m,m,W-m*2,H-m*2);
+
+    const cx = W/2, cy = H*0.44;
+    const bw = Math.min(W*0.5,420*S), bh = Math.min(H*0.3,190*S);
+    // içerik kutusu + çapraz
+    g.strokeStyle = C; g.lineWidth = 1.6;
+    g.strokeRect(cx-bw/2,cy-bh/2,bw,bh);
+    g.setLineDash([5,5]); g.strokeStyle = D;
+    g.beginPath();
+    g.moveTo(cx-bw/2,cy-bh/2); g.lineTo(cx+bw/2,cy+bh/2);
+    g.moveTo(cx+bw/2,cy-bh/2); g.lineTo(cx-bw/2,cy+bh/2);
+    g.stroke(); g.setLineDash([]);
+    tx(g,'İÇERİK (?)',cx,cy+4*S,
+       {font:`${12*S}px ui-monospace,monospace`,color:C,align:'center',ls:3});
+
+    // ölçü okları
+    const dy = cy+bh/2+30*S;
+    g.strokeStyle = D; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(cx-bw/2,dy); g.lineTo(cx+bw/2,dy); g.stroke();
+    [[cx-bw/2,1],[cx+bw/2,-1]].forEach(([x,d])=>{
+      g.beginPath(); g.moveTo(x,dy); g.lineTo(x+8*S*d,dy-4*S); g.lineTo(x+8*S*d,dy+4*S);
+      g.closePath(); g.fillStyle = D; g.fill();
+      g.beginPath(); g.moveTo(x,dy-9*S); g.lineTo(x,dy+9*S); g.stroke();
+    });
+    tx(g,'∞',cx,dy-7*S,{font:`${13*S}px ui-monospace,monospace`,color:C,align:'center'});
+
+    // dönen mekanizma
+    g.save(); g.translate(cx,cy); g.rotate(t*0.25);
+    g.strokeStyle = 'rgba(178,224,255,.35)'; g.lineWidth = 1.2;
+    for (let k=0;k<3;k++){
+      const r = (bh/2+22*S)+k*11*S;
+      g.beginPath(); g.arc(0,0,r,k*1.2,k*1.2+2.1); g.stroke();
+    }
+    g.restore();
+
+    // açıklamalar
+    const notes = [
+      ['burada bir fikir olacaktı', m+16*S, m+40*S],
+      ['ölçüler yaklaşıktır',       m+16*S, m+60*S],
+      ['malzeme: dikkat',           m+16*S, m+80*S]
+    ];
+    notes.forEach(([s,x,y])=>tx(g,s,x,y,
+      {font:`${11*S}px ui-monospace,monospace`,color:D,ls:1}));
+
+    // antet
+    const tb = Math.min(W*0.42,230*S), th = 66*S;
+    const bxx = W-m-tb, byy = H-m-th;
+    g.fillStyle = 'rgba(6,20,36,.6)'; g.fillRect(bxx,byy,tb,th);
+    g.strokeStyle = C; g.lineWidth = 1.3; g.strokeRect(bxx,byy,tb,th);
+    g.beginPath(); g.moveTo(bxx,byy+24*S); g.lineTo(bxx+tb,byy+24*S); g.stroke();
+    tx(g,'TASLAK — REV.03',bxx+10*S,byy+16*S,
+       {font:`700 ${11*S}px ui-monospace,monospace`,color:C,ls:2});
+    tx(g,'ÖLÇEK 1:1',bxx+10*S,byy+41*S,{font:`${10*S}px ui-monospace,monospace`,color:D,ls:1});
+    tx(g,'ONAY: —',bxx+10*S,byy+57*S,{font:`${10*S}px ui-monospace,monospace`,color:D,ls:1});
+
+    // tarayıcı çizgisi
+    const sy = (t*70)%(H+120)-60;
+    const sg = g.createLinearGradient(0,sy-40,0,sy+40);
+    sg.addColorStop(0,'rgba(150,215,255,0)');
+    sg.addColorStop(.5,'rgba(150,215,255,.14)');
+    sg.addColorStop(1,'rgba(150,215,255,0)');
+    g.fillStyle = sg; g.fillRect(0,sy-40,W,80);
+
+    tx(g,'HER BİTMİŞ ŞEYİN ALTINDA, ONU DÜŞÜNEN ÇİZİM DURUR.',cx,H-m-th-24*S,
+       {font:`${clamp(11*S,9,13)}px ui-monospace,monospace`,color:'rgba(178,224,255,.55)',align:'center',ls:2});
+    vignette(g,'rgba(0,8,20,.5)',.5);
+  }
+},
+
+/* 03 ───────────────── KAĞIT: el yazısı defter */
+{
+  name:'KATMAN 03', tag:'kağıt', bg:'#f4ecda',
+  edge:['rgba(150,130,95,.5)','rgba(255,252,242,.95)'],
+  shard:['#f4ecda','#e2d5b8'],
+  draw(g,t){
+    g.fillStyle = '#f4ecda'; g.fillRect(0,0,W,H);
+    // çizgiler
+    const lh = clamp(30*S,22,38), mx = clamp(70*S,38,96);
+    g.strokeStyle = 'rgba(120,150,180,.28)'; g.lineWidth = 1;
+    for (let y=lh*2; y<H; y+=lh){ g.beginPath(); g.moveTo(0,y+.5); g.lineTo(W,y+.5); g.stroke(); }
+    g.strokeStyle = 'rgba(200,90,80,.42)'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(mx,0); g.lineTo(mx,H); g.stroke();
+    // delikler
+    g.fillStyle = 'rgba(0,0,0,.055)';
+    for (let i=1;i<=3;i++){ g.beginPath(); g.arc(mx*0.45,H*i/4,6.5*S,0,7); g.fill(); }
+
+    // kahve halkası
+    g.save(); g.translate(W*0.8,H*0.24); g.scale(1,.62);
+    g.strokeStyle = 'rgba(140,95,45,.16)'; g.lineWidth = 7*S;
+    g.beginPath(); g.arc(0,0,44*S,0,7); g.stroke();
+    g.strokeStyle = 'rgba(140,95,45,.09)'; g.lineWidth = 2*S;
+    g.beginPath(); g.arc(0,0,52*S,.4,4.6); g.stroke();
+    g.restore();
+
+    const hand = s => `${s}px "Segoe Script","Bradley Hand","Comic Sans MS",Chalkboard,cursive,sans-serif`;
+    const ink = '#2c3a56';
+    g.save();
+    g.translate(mx+clamp(26*S,14,34), lh*3.2);
+    g.rotate(-0.012);
+
+    tx(g,'gece 03:14',0,0,{font:hand(clamp(17*S,14,21)),color:'rgba(44,58,86,.55)'});
+
+    const poem = ['bir şey yapmak,','bir şeyi bitirmekten','her zaman daha kolay.'];
+    const ps = clamp(28*S,19,34);
+    poem.forEach((s,i)=>tx(g,s,0,lh*1.9+i*lh*1.15,{font:hand(ps),color:ink}));
+
+    // altı çizili
+    g.strokeStyle = 'rgba(200,90,80,.5)'; g.lineWidth = 2*S;
+    g.beginPath();
+    const uw = Math.min(200*S, W*0.4);
+    for (let i=0;i<=20;i++){
+      const x = i/20*uw, y = lh*1.9+2*lh*1.15+9*S+Math.sin(i*.9)*1.5*S;
+      i ? g.lineTo(x,y) : g.moveTo(x,y);
+    }
+    g.stroke();
+
+    const todo = ['☑  fikri bul','☑  ertele','☐  bitir'];
+    const ty = lh*1.9+3*lh*1.15+lh*1.1;
+    todo.forEach((s,i)=>tx(g,s,4*S,ty+i*lh*.95,
+      {font:hand(clamp(19*S,15,23)),color:'rgba(44,58,86,.82)'}));
+
+    // doodle: spiral + ok
+    g.strokeStyle = 'rgba(44,58,86,.35)'; g.lineWidth = 1.6*S;
+    g.beginPath();
+    const sx = Math.min(W*0.42, 300*S), sy2 = ty + lh*0.6;
+    for (let a=0;a<10;a+=.12){
+      const r = a*2.4*S, x = sx+Math.cos(a+t*.2)*r, y = sy2+Math.sin(a+t*.2)*r;
+      a ? g.lineTo(x,y) : g.moveTo(x,y);
+    }
+    g.stroke();
+    g.restore();
+
+    tx(g,'arkası var →',W-clamp(26*S,14,30),H-clamp(26*S,16,32),
+       {font:hand(clamp(15*S,12,18)),color:'rgba(44,58,86,.4)',align:'right'});
+
+    grain(g,.7);
+    vignette(g,'rgba(90,70,35,.22)',.6);
+  }
+},
+
+/* 04 ───────────────── DEVRE: makinenin içi */
+{
+  name:'KATMAN 04', tag:'devre', bg:'#04070a',
+  edge:['rgba(0,0,0,.85)','rgba(90,255,190,.8)'],
+  shard:['#07131a','#0c2a24'],
+  init(l){
+    const paths = [], n = clamp(Math.round(W/34),12,44);
+    for (let i=0;i<n;i++){
+      let x = rnd(W), y = rnd(H);
+      const pts = [[x,y]], steps = 3+(Math.random()*4|0);
+      for (let k=0;k<steps;k++){
+        if (k%2) y += rnd(140*S,-140*S); else x += rnd(200*S,-200*S);
+        x = clamp(x,10,W-10); y = clamp(y,10,H-10);
+        pts.push([x,y]);
+      }
+      paths.push(pts);
+    }
+    l.cache = { paths, len: paths.map(p=>p.length) };
+  },
+  draw(g,t,l){
+    if (!l.cache) this.init(l);
+    g.fillStyle = '#04070a'; g.fillRect(0,0,W,H);
+
+    const trace = (pts)=>{ g.beginPath(); pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); g.stroke(); };
+    g.lineJoin = g.lineCap = 'round';
+
+    // taban izler
+    g.strokeStyle = 'rgba(0,220,160,.16)'; g.lineWidth = 2.2*S;
+    l.cache.paths.forEach(trace);
+    // akan sinyaller
+    g.save();
+    g.strokeStyle = 'rgba(120,255,205,.85)'; g.lineWidth = 2.4*S;
+    g.shadowColor = 'rgba(80,255,190,.85)'; g.shadowBlur = 12*S;
+    g.setLineDash([16*S, 190*S]);
+    l.cache.paths.forEach((p,i)=>{ g.lineDashOffset = -((t*120 + i*77) % 900); trace(p); });
+    g.restore();
+    g.setLineDash([]);
+    // lehim noktaları
+    l.cache.paths.forEach(p=>{
+      const [x,y] = p[p.length-1];
+      g.fillStyle = 'rgba(0,220,160,.25)'; g.beginPath(); g.arc(x,y,4.5*S,0,7); g.fill();
+      g.fillStyle = '#04070a'; g.beginPath(); g.arc(x,y,1.8*S,0,7); g.fill();
+    });
+
+    // çekirdek
+    const cx = W/2, cy = H*0.46, pulse = (Math.sin(t*2.4)+1)/2;
+    g.save(); g.translate(cx,cy);
+    for (let k=0;k<4;k++){
+      const r = (34+k*20)*S + pulse*7*S;
+      g.strokeStyle = `rgba(120,255,205,${.34-k*.07})`;
+      g.lineWidth = 1.4*S; g.beginPath(); g.arc(0,0,r,0,7); g.stroke();
+    }
+    g.rotate(t*0.4);
+    g.strokeStyle = 'rgba(150,255,215,.9)'; g.lineWidth = 2*S;
+    g.beginPath();
+    for (let i=0;i<6;i++){
+      const a = i/6*Math.PI*2, r = 24*S+pulse*4*S;
+      i ? g.lineTo(Math.cos(a)*r,Math.sin(a)*r) : g.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+    }
+    g.closePath(); g.stroke();
+    g.restore();
+    g.save();
+    g.shadowColor = 'rgba(80,255,190,.9)'; g.shadowBlur = 26*S;
+    g.fillStyle = `rgba(190,255,230,${.55+pulse*.4})`;
+    g.beginPath(); g.arc(cx,cy,7*S+pulse*2*S,0,7); g.fill();
+    g.restore();
+
+    // günlük
+    const log = ['> önyükleme ............ tamam','> katman 04 · devre aktif','> insan tespit edildi',
+                 '> niyet: merak','> öneri: yırtmaya devam et'];
+    const el = (t - (l.t0||t)) * 26;
+    const fs = clamp(12*S,10,14), x0 = clamp(28*S,14,40);
+    let budget = el;
+    log.forEach((s,i)=>{
+      if (budget <= 0) return;
+      const shown = s.slice(0, Math.min(s.length, budget|0));
+      budget -= s.length + 6;
+      const y = H - clamp(30*S,18,40) - (log.length-1-i)*fs*1.9;
+      tx(g, shown + (shown.length < s.length && (t*2.5|0)%2 ? '▌' : ''), x0, y,
+         {font:`${fs}px ui-monospace,monospace`,color:'rgba(120,255,205,.8)',ls:.8});
+    });
+
+    vignette(g,'rgba(0,0,0,.75)',.35);
+  }
+},
+
+/* 05 ───────────────── BOŞLUK: son katman */
+{
+  name:'KATMAN 05', tag:'boşluk', bg:'#04040a',
+  edge:['rgba(0,0,0,.9)','rgba(255,250,235,.95)'],
+  shard:['#0a0a16','#1b1636'],
+  init(l){
+    const n = clamp(Math.round(W*H/8500),120,420), st = [];
+    for (let i=0;i<n;i++) st.push({x:rnd(W),y:rnd(H),r:rnd(1.5,.25),z:rnd(1,.2),p:rnd(7)});
+    l.cache = { st };
+  },
+  draw(g,t,l){
+    if (!l.cache) this.init(l);
+    g.fillStyle = '#04040a'; g.fillRect(0,0,W,H);
+
+    // bulutsu
+    const neb = (x,y,r,c1)=>{
+      const gr = g.createRadialGradient(x,y,0,x,y,r);
+      gr.addColorStop(0,c1); gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0,0,W,H);
+    };
+    neb(W*0.28+Math.sin(t*.12)*30*S, H*0.3, Math.max(W,H)*0.55,'rgba(86,60,160,.30)');
+    neb(W*0.76+Math.cos(t*.1)*30*S,  H*0.7, Math.max(W,H)*0.48,'rgba(20,110,130,.24)');
+
+    // yıldızlar (imleçle paralaks)
+    l.cache.st.forEach(s=>{
+      const px = s.x + pmx*26*S*s.z, py = s.y + pmy*26*S*s.z + Math.sin(t*.06+s.p)*4;
+      const a = .35 + Math.abs(Math.sin(t*.9 + s.p))*.65;
+      g.fillStyle = `rgba(255,255,255,${a*s.z})`;
+      g.beginPath(); g.arc((px+W)%W,(py+H)%H,s.r*s.z*1.6,0,7); g.fill();
+    });
+
+    const cx = W/2, cy = H*0.42;
+    const mk = s => `${s}px Georgia,"Times New Roman",serif`;
+    g.save(); g.shadowColor = 'rgba(180,200,255,.4)'; g.shadowBlur = 24*S;
+    const s1 = fit(g,'buraya kadar geldin.',W*0.84,clamp(44*S,24,52),mk);
+    tx(g,'buraya kadar geldin.',cx,cy,{font:mk(s1),color:'#f2f4ff',align:'center'});
+    g.restore();
+
+    const sub = 'her yüzeyin altında bir yüzey daha var.';
+    const sub2 = 'bu sitenin de.';
+    const fs = clamp(14*S,11,17);
+    tx(g,sub,cx,cy+42*S,{font:`${fs}px ui-monospace,monospace`,color:'rgba(200,214,240,.72)',align:'center',ls:.6});
+    tx(g,sub2,cx,cy+42*S+fs*1.9,{font:`${fs}px ui-monospace,monospace`,color:'rgba(200,214,240,.72)',align:'center',ls:.6});
+
+    tx(g,'BURADA DA YIRTABİLİRSİN — ARKASI IŞIK',cx,cy+42*S+fs*4.6,
+       {font:`${clamp(10.5*S,9,12)}px ui-monospace,monospace`,
+        color:`rgba(255,236,190,${.35+Math.abs(Math.sin(t*1.4))*.4})`,align:'center',ls:3});
+
+    vignette(g,'rgba(0,0,0,.8)',.3);
+  }
+}
+];
+
+/* ---------------------------------------------------------------
+   kurulum / boyutlandırma
+   --------------------------------------------------------------- */
+const GW = 60, GH = 40;
+let active = 0, pmx = 0, pmy = 0, tmx = 0, tmy = 0, started = false;
+
+function mkCanvas(){
+  const c = document.createElement('canvas');
+  stage.appendChild(c); return c;
+}
+L.forEach((def,i)=>{
+  def.i = i;
+  def.cv    = mkCanvas();
+  def.ctx   = def.cv.getContext('2d');
+  def.holes = document.createElement('canvas'); def.hctx = def.holes.getContext('2d');
+  def.edges = document.createElement('canvas'); def.ectx = def.edges.getContext('2d');
+  def.cells = new Uint8Array(GW*GH);
+  def.marked = 0; def.dead = false; def.collapsing = false; def.t0 = 0;
+  def.cv.style.zIndex = String(300 - i);
+});
+
+function resize(){
+  const nw = innerWidth, nh = innerHeight, nd = Math.min(devicePixelRatio||1, 1.75);
+  if (nw === W && nh === H && nd === DPR) return;   // mobil adres çubuğu titremesi
+  W = nw; H = nh;
+  DPR = nd;
+  S = clamp(Math.min(W,H)/720, .62, 1.45);
+  patCache.clear();
+  const set = c => { c.width = Math.round(W*DPR); c.height = Math.round(H*DPR); };
+  L.forEach(l=>{
+    // mevcut yırtıkları ölçekleyerek koru
+    const oh = l.holes.width ? copy(l.holes) : null;
+    const oe = l.edges.width ? copy(l.edges) : null;
+    set(l.cv); set(l.holes); set(l.edges);
+    if (oh){ l.hctx.drawImage(oh,0,0,l.holes.width,l.holes.height); }
+    if (oe){ l.ectx.drawImage(oe,0,0,l.edges.width,l.edges.height); }
+    l.cache = null;
+    if (l.init) l.init(l);
+  });
+  set(fx);
+}
+function copy(c){
+  const d = document.createElement('canvas'); d.width = c.width; d.height = c.height;
+  d.getContext('2d').drawImage(c,0,0); return d;
+}
+addEventListener('resize', resize);
+resize();
+
+/* ---------------------------------------------------------------
+   yırtma
+   --------------------------------------------------------------- */
+function blobPath(g,x,y,r,seed){
+  const n = 15;
+  g.beginPath();
+  for (let i=0;i<=n;i++){
+    const a = i/n*Math.PI*2;
+    const w = Math.sin(seed+i*2.3)*.5 + Math.sin(seed*1.7+i*5.1)*.28;
+    const k = r*(0.78 + w*0.42);
+    const px = x+Math.cos(a)*k, py = y+Math.sin(a)*k;
+    i ? g.lineTo(px,py) : g.moveTo(px,py);
+  }
+  g.closePath();
+}
+
+function markCells(l,x,y,r){
+  const cw = W/GW, ch = H/GH;
+  const i0 = clamp(Math.floor((x-r)/cw),0,GW-1), i1 = clamp(Math.ceil((x+r)/cw),0,GW-1);
+  const j0 = clamp(Math.floor((y-r)/ch),0,GH-1), j1 = clamp(Math.ceil((y+r)/ch),0,GH-1);
+  for (let j=j0;j<=j1;j++) for (let i=i0;i<=i1;i++){
+    const idx = j*GW+i;
+    if (l.cells[idx]) continue;
+    const dx = (i+.5)*cw-x, dy = (j+.5)*ch-y;
+    if (dx*dx+dy*dy < r*r){ l.cells[idx] = 1; l.marked++; }
+  }
+}
+
+function tearAt(x,y,r,power){
+  const l = L[active];
+  if (!l || l.dead || l.collapsing) return;
+  const seed = Math.random()*99;
+
+  const h = l.hctx;
+  h.save(); h.setTransform(DPR,0,0,DPR,0,0);
+  h.fillStyle = '#fff';
+  blobPath(h,x,y,r,seed); h.fill();
+  for (let k=0;k<2;k++){                          // uydu yırtıklar
+    const a = rnd(7), d = r*rnd(1.15,.6);
+    blobPath(h, x+Math.cos(a)*d, y+Math.sin(a)*d, r*rnd(.42,.18), seed+k*3); h.fill();
+  }
+  h.restore();
+
+  const e = l.ectx;
+  e.save(); e.setTransform(DPR,0,0,DPR,0,0);
+  e.lineJoin = e.lineCap = 'round';
+  e.strokeStyle = l.edge[0]; e.lineWidth = 4.2;
+  blobPath(e,x,y,r*1.02,seed); e.stroke();
+  e.strokeStyle = l.edge[1]; e.lineWidth = 1.3;
+  blobPath(e,x,y,r*1.02,seed); e.stroke();
+  e.strokeStyle = l.edge[1]; e.lineWidth = 1;     // lifler
+  for (let k=0;k<7;k++){
+    const a = rnd(7), r0 = r*rnd(1.05,.9), r1 = r*rnd(1.5,1.1);
+    e.beginPath();
+    e.moveTo(x+Math.cos(a)*r0, y+Math.sin(a)*r0);
+    e.lineTo(x+Math.cos(a+rnd(.2,-.2))*r1, y+Math.sin(a+rnd(.2,-.2))*r1);
+    e.stroke();
+  }
+  e.restore();
+
+  markCells(l,x,y,r);
+  dust(x,y,l,power);
+  ringDirty = true;
+
+  if (l.marked / l.cells.length > 0.52) collapse(l);
+}
+
+/* ---------------------------------------------------------------
+   çöküş / geçiş
+   --------------------------------------------------------------- */
+let gen = 0, autoT = null, ringDirty = true;  // "baştan" ile çöküş yarışmasın diye
+function collapse(l){
+  if (l.collapsing) return;
+  const myGen = gen;
+  l.collapsing = true;
+  shards(l);
+  sndCollapse();
+  l.cv.style.transition = 'transform 1s cubic-bezier(.36,.07,.19,.97),opacity 1s ease-in,filter 1s';
+  requestAnimationFrame(()=>{
+    l.cv.style.transform = `scale(${1.16+Math.random()*.12}) rotate(${rnd(2.5,-2.5)}deg)`;
+    l.cv.style.opacity = '0';
+    if (!RM) l.cv.style.filter = 'blur(7px)';
+  });
+  const last = (l.i === L.length-1);
+  if (!last){ active = l.i+1; L[active].t0 = 0; }
+  updateHUD();
+  setTimeout(()=>{
+    if (myGen !== gen) return;                // araya "baştan" girdiyse yok say
+    l.dead = true; l.cv.style.display = 'none';
+    if (last) resetAll();
+    else {
+      sndArrive();
+      toast(['bir katman daha.','altı hep var.','devam et.','burası da yüzey.'][l.i % 4]);
+    }
+  }, 1000);
+}
+
+function resetAll(){
+  gen++;
+  clearInterval(autoT);
+  const f = document.getElementById('flash');
+  f.classList.add('on');
+  const myGen = gen;
+  setTimeout(()=>{
+    if (myGen !== gen) return;
+    L.forEach(l=>{
+      l.hctx.setTransform(1,0,0,1,0,0); l.hctx.clearRect(0,0,l.holes.width,l.holes.height);
+      l.ectx.setTransform(1,0,0,1,0,0); l.ectx.clearRect(0,0,l.edges.width,l.edges.height);
+      l.cells.fill(0); l.marked = 0; l.dead = false; l.collapsing = false; l.t0 = 0;
+      l.cv.style.transition = 'none';
+      l.cv.style.transform = 'none'; l.cv.style.opacity = '1'; l.cv.style.filter = 'none';
+    });
+    active = 0; updateHUD(); ringDirty = true;
+    parts.length = 0;
+    f.classList.remove('on');
+    toast('başa döndün. ama artık biliyorsun.');
+  }, 260);
+}
+
+/* ---------------------------------------------------------------
+   parçacıklar (fx katmanı)
+   --------------------------------------------------------------- */
+const parts = [];
+function dust(x,y,l,power){
+  const n = RM ? 2 : 3 + (power*4|0);
+  for (let i=0;i<n;i++) parts.push({
+    x, y, vx: rnd(1.6,-1.6), vy: rnd(-.4,-2.4), g:.055,
+    life:1, dec: rnd(.03,.014), size: rnd(2.6,.8), rot: rnd(7), vr: rnd(.2,-.2),
+    c: l.shard[i%2], kind:'d'
+  });
+}
+function shards(l){
+  const n = RM ? 24 : 70, cw = W/GW, ch = H/GH;
+  for (let i=0;i<n;i++){
+    const idx = Math.random()*l.cells.length|0;
+    if (l.cells[idx]) continue;
+    const x = (idx%GW+.5)*cw, y = ((idx/GW)|0)*ch+ch/2;
+    const a = Math.atan2(y-H/2, x-W/2);
+    parts.push({
+      x, y, vx: Math.cos(a)*rnd(7,1.5)+rnd(1,-1), vy: Math.sin(a)*rnd(7,1.5)-rnd(3,0),
+      g:.16, life:1, dec: rnd(.017,.008), size: rnd(26,7)*S, rot: rnd(7), vr: rnd(.18,-.18),
+      c: l.shard[i%2], edge: l.edge[1], kind:'s'
+    });
+  }
+}
+function drawFX(){
+  fxg.setTransform(DPR,0,0,DPR,0,0);
+  fxg.clearRect(0,0,W,H);
+  for (let i=parts.length-1;i>=0;i--){
+    const p = parts[i];
+    p.x += p.vx; p.y += p.vy; p.vy += p.g; p.rot += p.vr; p.life -= p.dec;
+    if (p.life <= 0 || p.y > H+120){ parts.splice(i,1); continue; }
+    fxg.save();
+    fxg.globalAlpha = clamp(p.life,0,1);
+    fxg.translate(p.x,p.y); fxg.rotate(p.rot);
+    fxg.fillStyle = p.c;
+    if (p.kind === 's'){
+      const s = p.size;
+      fxg.beginPath();
+      fxg.moveTo(-s*.5,-s*.4); fxg.lineTo(s*.5,-s*.5);
+      fxg.lineTo(s*.42,s*.5);  fxg.lineTo(-s*.46,s*.36);
+      fxg.closePath(); fxg.fill();
+      fxg.strokeStyle = p.edge; fxg.lineWidth = 1; fxg.stroke();
+    } else {
+      fxg.fillRect(-p.size/2,-p.size/2,p.size,p.size);
+    }
+    fxg.restore();
+  }
+  // özel imleç
+  if (fine && pointerIn && !docOpen){
+    // her zeminde görünsün diye çift kontur: koyu dış + açık iç
+    const cr = radius()*(down?1.15:1);
+    fxg.save();
+    fxg.strokeStyle = 'rgba(0,0,0,.45)'; fxg.lineWidth = 3.5;
+    fxg.beginPath(); fxg.arc(cur.x,cur.y,cr,0,7); fxg.stroke();
+    fxg.strokeStyle = 'rgba(255,255,255,.95)'; fxg.lineWidth = 1.2;
+    fxg.beginPath(); fxg.arc(cur.x,cur.y,cr,0,7); fxg.stroke();
+    fxg.strokeStyle = 'rgba(0,0,0,.45)'; fxg.lineWidth = 3;
+    fxg.beginPath(); fxg.arc(cur.x,cur.y,2.5,0,7); fxg.stroke();
+    fxg.strokeStyle = 'rgba(255,255,255,.95)'; fxg.lineWidth = 1;
+    fxg.beginPath(); fxg.arc(cur.x,cur.y,2.5,0,7); fxg.stroke();
+    fxg.restore();
+  }
+}
+
+/* ---------------------------------------------------------------
+   ses (dosyasız — hepsi WebAudio)
+   --------------------------------------------------------------- */
+let AC = null, NOISE = null, muted = false, lastSnd = 0;
+function ac(){
+  if (!AC){
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    AC = new A();
+    NOISE = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = NOISE.getChannelData(0);
+    for (let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function sndTear(power){
+  if (muted) return;
+  const c = ac(); if (!c) return;
+  const now = c.currentTime;
+  if (now - lastSnd < 0.035) return;
+  lastSnd = now;
+  const s = c.createBufferSource(); s.buffer = NOISE;
+  s.playbackRate.value = rnd(1.6,.6);
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 900 + Math.random()*3200; bp.Q.value = rnd(2.4,.8);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0,now);
+  g.gain.linearRampToValueAtTime(clamp(.05+power*.09,0,.16), now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001, now+.11);
+  s.connect(bp).connect(g).connect(c.destination);
+  s.start(now); s.stop(now+.14);
+}
+function sndCollapse(){
+  if (muted) return;
+  const c = ac(); if (!c) return;
+  const now = c.currentTime;
+  const o = c.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(190,now);
+  o.frequency.exponentialRampToValueAtTime(32, now+1.1);
+  const g = c.createGain();
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(.22, now+.03);
+  g.gain.exponentialRampToValueAtTime(.0001, now+1.2);
+  o.connect(g).connect(c.destination); o.start(now); o.stop(now+1.25);
+
+  const s = c.createBufferSource(); s.buffer = NOISE;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(4200,now);
+  lp.frequency.exponentialRampToValueAtTime(220, now+.8);
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(.16,now);
+  g2.gain.exponentialRampToValueAtTime(.0001, now+.85);
+  s.connect(lp).connect(g2).connect(c.destination); s.start(now); s.stop(now+.9);
+}
+function sndArrive(){
+  if (muted) return;
+  const c = ac(); if (!c) return;
+  const now = c.currentTime;
+  [523.25, 784, 1046.5].forEach((f,i)=>{
+    const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+    const g = c.createGain();
+    const s = now + i*0.07;
+    g.gain.setValueAtTime(.0001,s);
+    g.gain.exponentialRampToValueAtTime(.07, s+.02);
+    g.gain.exponentialRampToValueAtTime(.0001, s+.9);
+    o.connect(g).connect(c.destination); o.start(s); o.stop(s+.95);
+  });
+}
+
+/* ---------------------------------------------------------------
+   girdi
+   --------------------------------------------------------------- */
+const fine = matchMedia('(pointer:fine)').matches;
+let down = false, pointerIn = false, docOpen = false;
+const cur = {x:-999,y:-999}, prev = {x:0,y:0};
+const radius = ()=> clamp(Math.min(W,H)*0.055, 24, 62);
+
+function pos(e){
+  const r = stage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function firstTouch(){
+  if (started) return;
+  started = true;
+  document.getElementById('hint').classList.remove('show');
+}
+stage.addEventListener('pointerdown', e=>{
+  down = true; pointerIn = true;
+  stage.setPointerCapture?.(e.pointerId);
+  const p = pos(e); cur.x = p.x; cur.y = p.y; prev.x = p.x; prev.y = p.y;
+  firstTouch();
+  tearAt(p.x, p.y, radius()*rnd(1.05,.8), .35);
+  sndTear(.35);
+  e.preventDefault();
+});
+stage.addEventListener('pointermove', e=>{
+  const p = pos(e);
+  if (!pointerIn && e.pointerType === 'mouse') stage.classList.add('hidecur');
+  pointerIn = true;
+  cur.x = p.x; cur.y = p.y;
+  tmx = (p.x/W)*2-1; tmy = (p.y/H)*2-1;
+  if (!down) return;
+  const dx = p.x-prev.x, dy = p.y-prev.y;
+  const dist = Math.hypot(dx,dy);
+  if (dist < 7) return;
+  const steps = Math.min(Math.ceil(dist/9), 14);
+  const power = clamp(dist/40,.15,1);
+  for (let i=1;i<=steps;i++){
+    tearAt(prev.x+dx*i/steps, prev.y+dy*i/steps, radius()*rnd(1.1,.72), power);
+  }
+  sndTear(power);
+  prev.x = p.x; prev.y = p.y;
+}, {passive:true});
+const up = ()=>{ down = false; };
+stage.addEventListener('pointerup', up);
+stage.addEventListener('pointercancel', up);
+stage.addEventListener('pointerleave', ()=>{
+  down = false; pointerIn = false; stage.classList.remove('hidecur');
+});
+
+addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if (k === 'escape' && docOpen) toggleDoc(false);
+  else if (k === 't') toggleDoc(!docOpen);
+  else if (k === 'm') toggleSound();
+  else if (k === 'r') resetAll();
+  else if (e.code === 'Space'){
+    e.preventDefault(); firstTouch();
+    const cx = W/2, cy = H/2;
+    for (let i=0;i<10;i++){
+      const a = rnd(7), d = rnd(Math.min(W,H)*.34);
+      tearAt(cx+Math.cos(a)*d, cy+Math.sin(a)*d, radius()*rnd(1.2,.8), .8);
+    }
+    sndTear(.9);
+  }
+});
+
+/* otomatik yırtma (dokunamayanlar / sabırsızlar için) */
+function autoTear(ms=2600){
+  clearInterval(autoT); firstTouch();
+  let a = rnd(7);
+  autoT = setInterval(()=>{
+    a += rnd(.9,.25);
+    const R = Math.min(W,H)*rnd(.42,.06);
+    tearAt(W/2+Math.cos(a)*R, H/2+Math.sin(a)*R, radius()*rnd(1.2,.85), .6);
+    sndTear(.5);
+  }, 34);
+  setTimeout(()=>clearInterval(autoT), ms);
+}
+
+/* ---------------------------------------------------------------
+   HUD
+   --------------------------------------------------------------- */
+const lname = document.getElementById('lname'), ltag = document.getElementById('ltag');
+const ringFg = document.querySelector('#ring .fg');
+const depth = document.getElementById('depth');
+L.forEach(()=>depth.appendChild(document.createElement('i')));
+function updateHUD(){
+  const l = L[active];
+  lname.textContent = l.name + ' / 0' + L.length;
+  ltag.textContent = l.tag;
+  [...depth.children].forEach((el,i)=>el.classList.toggle('on', i === active));
+  document.getElementById('final').classList.toggle('on', active === L.length-1);
+}
+function updateRing(){
+  const l = L[active];
+  const p = clamp((l.marked/l.cells.length)/0.52, 0, 1);
+  ringFg.style.strokeDashoffset = String(94.2*(1-p));
+}
+updateHUD(); updateRing();
+
+const toastEl = document.getElementById('toast');
+let toastT = null;
+function toast(msg, ms=2300){
+  toastEl.textContent = msg; toastEl.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>toastEl.classList.remove('on'), ms);
+}
+
+function toggleSound(){
+  muted = !muted;
+  document.getElementById('bSnd').textContent = muted ? 'ses ✕' : 'ses ▮▮';
+  if (!muted) ac();
+}
+function toggleDoc(on){
+  docOpen = on;
+  document.getElementById('doc').classList.toggle('on', on);
+}
+document.getElementById('bSnd').onclick  = toggleSound;
+document.getElementById('bDoc').onclick  = ()=>toggleDoc(true);
+document.getElementById('bDocX').onclick = ()=>toggleDoc(false);
+document.getElementById('bAuto').onclick = ()=>resetAll();
+document.getElementById('docLink').onclick = e=>{ e.preventDefault(); toggleDoc(true); };
+document.getElementById('againLink').onclick = e=>{ e.preventDefault(); autoTear(1800); };
+
+/* metin görünümü */
+(function buildDoc(){
+  const b = document.getElementById('docBody');
+  let html = '<h1>Katmanlar — metin görünümü</h1>';
+  DOC.forEach(([h,ps])=>{
+    html += '<h2>'+h+'</h2>';
+    ps.forEach(p=>html += '<p>'+p.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>');
+  });
+  html += '<h2>bağlantılar</h2><p><a href="https://github.com/savaskiran" target="_blank" rel="noopener">github.com/savaskiran</a></p>';
+  html += '<footer>kısayollar: <kbd>sürükle</kbd> yırt · <kbd>space</kbd> patlat · '
+       +  '<kbd>T</kbd> metin · <kbd>M</kbd> ses · <kbd>R</kbd> baştan<br>'
+       +  'tek dosya, sıfır bağımlılık. ses de dahil her şey tarayıcıda üretiliyor.</footer>';
+  b.innerHTML = html;
 })();
+
+/* ---------------------------------------------------------------
+   döngü
+   --------------------------------------------------------------- */
+function renderLayer(l,t){
+  if (!l.t0) l.t0 = t;
+  const g = l.ctx;
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.globalCompositeOperation = 'source-over';
+  g.clearRect(0,0,W,H);
+  l.draw(g,t,l);
+  g.setTransform(1,0,0,1,0,0);
+  g.globalCompositeOperation = 'destination-out';
+  g.drawImage(l.holes,0,0);
+  g.globalCompositeOperation = 'source-atop';
+  g.drawImage(l.edges,0,0);
+  g.globalCompositeOperation = 'source-over';
+}
+
+function frame(now){
+  const t = now/1000;
+  pmx += (tmx-pmx)*.05; pmy += (tmy-pmy)*.05;
+  for (let i=0;i<L.length;i++){
+    const l = L[i];
+    const show = !l.dead && (i === active || i === active+1 || l.collapsing);
+    if (l.shown !== show){ l.cv.style.display = show ? 'block' : 'none'; l.shown = show; }
+    if (show && !l.collapsing) renderLayer(l,t);
+  }
+  if (ringDirty){ updateRing(); ringDirty = false; }
+  drawFX();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ilk ipucu */
+setTimeout(()=>{ if (!started) document.getElementById('hint').classList.add('show'); }, 2600);
+setTimeout(()=>{ if (!started) toast('sabırsızsan: SPACE'); }, 12000);
+console.log('%c yırt. ','background:#0b0d10;color:#8ef0b6;padding:4px 8px;font:12px monospace');
 </script>
 </body>
 </html>
